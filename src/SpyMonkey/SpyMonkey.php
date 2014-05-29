@@ -30,10 +30,11 @@ class SpyMonkey{
 	/**
 	 * @var string
 	 **/
-	protected $compare  = null;
+	protected $compare  = "=";
 
 	public function SpyMonkey(\PDO $pdo){
 		$this->pdo = $pdo;
+		$this->compare = "=";
 	}
     /**
      * Gets the value of pdo.
@@ -150,7 +151,7 @@ class SpyMonkey{
      *
      * @return mixed
      */
-    protected function getCompare(){
+    public function getCompare(){
         return $this->compare;
     }
     /**
@@ -212,7 +213,7 @@ class SpyMonkey{
 	 * @return string
 	 */
 	protected function hasLimit(){
-		return (is_null($this->getLimit())? true : false;
+		return (is_null($this->getLimit()))? false : true;
 	}
 	/**
 	 * @return string
@@ -228,7 +229,7 @@ class SpyMonkey{
 	 * @return string
 	 */
 	protected function hasOffSet(){
-		return (is_null($this->getOffSet()))? true : false;
+		return (is_null($this->getOffSet()))? false : true;
 	}
 	/**
 	 * @return string

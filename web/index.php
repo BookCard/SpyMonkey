@@ -14,19 +14,21 @@ $app = new \Slim\Slim();
  **/
 $app->get("/", function () use ($app){
 	$app->response->headers->set('Content-Type', 'application/json');
-	$app->response->headers->setStatus(200);
+	$app->response->setStatus(200);
 	try{
 
-		$Monkey = new \SpyMonkey\SpyMonkey();
+		$Monkey = new \SpyMonkey\SpyMonkey(new \PDO());
+
+		echo $Monkey->getCompare();
 
 		#is bad
-		$cards = $Monkey->setResource("oferta")->setField("id")->setValue(1)->consult();
+		echo $Monkey->setResource("oferta")->setField("id")->setValue(1)->build();
 
 		# is very cool
-		$cards = $Monkey->about("oferta")->with("id")->equals(1)->whatYouSee();
+		#$cards = $Monkey->about("oferta")->with("id")->equals(1)->whatYouSee();
 
 		# is very inteligent
-		$cards = $Monkey->about("oferta")->between(0,10)->with("imagem")->different(NULL)->whatYouSee();
+		#$cards = $Monkey->about("oferta")->between(0,10)->with("imagem")->different(NULL)->whatYouSee();
 
 
 		$app->response->write($return);
