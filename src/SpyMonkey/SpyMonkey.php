@@ -6,33 +6,33 @@ class SpyMonkey{
 	/**
 	 * @var \PDO
 	 **/
-	protected $pdo 		= null;
+	private $pdo 		= null;
 	/**
 	 * @var string
 	 **/
-	protected $resource = null;
+	private $resource = null;
 	/**
 	 * @var string
 	 **/
-	protected $field 	= null;
+	private $field 	= null;
 	/**
 	 * @var string
 	 **/
-	protected $value 	= null;
+	private $value 	= null;
 	/**
 	 * @var int
 	 **/
-	protected $offset 	= null;
+	private $offset 	= null;
 	/**
 	 * @var int
 	 **/
-	protected $limit 	= null;
+	private $limit 	= null;
 	/**
 	 * @var string
 	 **/
-	protected $compare  = "=";
+	private $compare  = null;
 
-	public function SpyMonkey(\PDO $pdo){
+	public function __construct(\PDO $pdo){
 		$this->pdo = $pdo;
 		$this->compare = "=";
 	}
@@ -41,7 +41,7 @@ class SpyMonkey{
      *
      * @return \PDO
      */
-    protected function getPdo()
+    private function getPDO()
     {
         return $this->pdo;
     }
@@ -57,23 +57,22 @@ class SpyMonkey{
      * @param string
      */
 	public function setResource($resource){
-		$resource = $this->filter($resource);
-		if(empty($resource) || is_null($resource)){
-			throw new \InvalidArgumentException;
-		}
-		$this->resource = $resource;
+		$this->resource = $this->filter($resource);
 		return $this;
+	}
+	/**
+	 * Checa existencia do resource
+	 * @return bool
+	 */
+	public function hasResource(){
+		return (is_null($this->getResource()))? false:true;
 	}
     /**
      * set Field
      * @param string
      */
 	public function setField($field){
-		$field = $this->filter($field);
-		if(empty($field) || is_null($field)){
-			throw new \InvalidArgumentException;
-		}
-		$this->field = $field;
+		$this->field = $this->filter($field);
 		return $this;
 	}
     /**
@@ -88,11 +87,7 @@ class SpyMonkey{
      * @return string
      */
 	public function setValue($value){
-		$value = $this->filter($value);
-		if(empty($value) || is_null($value)){
-			throw new \InvalidArgumentException;
-		}
-		$this->value = $value;
+		$this->value = $this->filter($value);
 		return $this;
 	}
     /**
@@ -118,7 +113,7 @@ class SpyMonkey{
      * @return self
      */
     public function setOffSet($offset){
-    	if(!is_numeric($limit)){
+    	if(!is_numeric($offset)){
     		throw new \InvalidArgumentException("offset must be an integer!");
     	}
         $this->offset = (int) abs($offset);
@@ -161,64 +156,70 @@ class SpyMonkey{
      *
      * @return self
      */
-    protected function setCompare($compare){
+    private function setCompare($compare){
+    	if(!in_array($compare,array(">","<","=","!=","<=",">=","!="))){
+    		throw new \InvalidArgumentException;
+    	}
         $this->compare = $compare;
-
         return $this;
     }
 	/**
 	 * Higienizador
 	 * @return int|string
 	 **/
-	protected function filter($value){
-		#$pattern = "/^[[:alnum:]]/";
-		$pattern = "/^[[A-Za-z0-9 ]]/";
+	private function filter($value){
+		$pattern = "/[^[:alnum:]]/";
+		#$pattern = "/[^A-Za-z0-9]/";
 		return preg_replace($pattern,"",$value);
 	}
 	/**
 	 * Get type
 	 **/
-	protected function getType($value){
+	private function getType($value){
 		if(is_numeric($value)){
 			return \PDO::PARAM_INT;
 		}
-		return \PDO::PARAM_STRING;
+		return \PDO::PARAM_STR;
 	}
 	/**
 	 * Constroi o sql
 	 * @return string
+	 * @throws \BadMethodCallException se não for definido antes da chamada o resource
 	 */
 	public function build(){
+		if(!$this->hasResource()){
+			throw new \BadMethodCallException("Error missing resource!");
+		}
 		return $this->select().$this->where().$this->condition().$this->limit().$this->offset();
 	}
 	/**
 	 * @return string
 	 */
-	protected function select(){
+	private function select(){
 		return " SELECT * FROM `".$this->getResource()."` r ";
 	}
 	/**
 	 * @return string
 	 */
-	protected function where(){
+	private function where(){
 		return " WHERE `r`.`".$this->getField()."` ";
 	}
 	/**
 	 * @return string
 	 */
-	protected function condition(){
+	private function condition(){
 		return " ".$this->getCompare()." :value ";
 	}
 	/**
 	 * @return string
 	 */
-	protected function hasLimit(){
+	private function hasLimit(){
 		return (is_null($this->getLimit()))? false : true;
 	}
 	/**
 	 * @return string
 	 */
-	protected function limit(){
+	private function limit(){
 		if($this->hasLimit()){
 			return " LIMIT :limit ";
 		}else{
@@ -228,27 +229,28 @@ class SpyMonkey{
 	/**
 	 * @return string
 	 */
-	protected function hasOffSet(){
+	private function hasOffSet(){
 		return (is_null($this->getOffSet()))? false : true;
 	}
 	/**
 	 * @return string
 	 */
-	protected function offset(){
+	private function offset(){
 		if($this->hasOffSet()){
-			return " offset :offset";
+			return " OFFSET :offset";
 		}else{
 			return "";
 		}
 	}
 	/**
-	 * @param string sql
+	 * Executa o comando no bd
+	 * @param string $sql
 	 * @return array
 	 * @throws \PDOException
 	 */
-	protected function execute($sql){
+	private function execute($sql){
 		try{
-			$stmt = $this->getPDO()->prepare($query);
+			$stmt = $this->getPDO()->prepare($sql);
 			$stmt->bindParam(":value", $value,$this->getType($value));
 			if($this->hasLimit()){
 				$stmt->bindParam(":limit", $this->getLimit(),\PDO::PARAM_INT);
@@ -259,9 +261,9 @@ class SpyMonkey{
 			if($stmt->execute()){
 				throw new \PDOException("Error in query!");
 			}
-			return $stmt->fetchAll(PDO::FETCH_OBJ);
+			return $stmt->fetchAll(\PDO::FETCH_OBJ);
 		}catch(\PDOException $e){
-			throw new \BadMethodCallException;
+			throw new \BadMethodCallException($e->getMessage());
 		}
 	}
 	/**
@@ -274,9 +276,86 @@ class SpyMonkey{
 			$built = $this->build();
 			return $this->execute($built);
 		}catch(\PDOException $e){
-			throw new \Exception("Error while executing query!");
+			throw new \Exception("Error while executing query! :".$e->getMessage());
 		}
 	}
 
+	/**
+	 * Alias para Set resource
+	 * @param string $resource
+	 */
+	public function about($resource){
+		$this->setResource($resource);
+		return $this;
+	}
+
+	/**
+	 * Alias duplo para setOffset e setLimit
+	 * @param int $index
+	 * @param int $limit
+ 	 */
+	public function between($index,$limit){
+		$this->setOffSet($index);
+		$this->setLimit($limit);
+		return $this;
+	}
+
+	/**
+	 * Alias duplo para setValue e setCompare
+	 * @param string $value
+	 */
+	public function equals($value){
+		$this->setCompare("=");
+		$this->setValue($value);
+		return $this;
+	}
+
+	/**
+	 * Alias duplo para setValue e setCompare
+	 * @param string $value
+	 */
+	public function greaterThan($value){
+		$this->setCompare(">");
+		$this->setValue($value);
+		return $this;
+	}
+
+	/**
+	 * Alias duplo para setValue e setCompare
+	 * @param string $value
+	 */
+	public function lessThan($value){
+		$this->setCompare("<");
+		$this->setValue($value);
+		return $this;
+	}
+
+	/**
+	 * Alias duplo para setValue e setCompare
+	 * @param string $value
+	 */
+	public function different($value){
+		$this->setCompare("!=");
+		$this->setValue($value);
+		return $this;
+	}
+
+	/**
+	 * Alias para setField
+	 * @param string $value
+	 */
+	public function with($field){
+		$this->setField($field);
+		return $this;
+	}
+
+	/**
+	 * Alias para consult
+	 * @return array
+	 * @throws \Exception
+	 */
+	public function whatYouSee(){
+		return $this->consult();
+	}
 
 }
